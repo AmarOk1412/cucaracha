@@ -4,6 +4,7 @@ extern crate log;
 extern crate sysfs_gpio;
 
 pub mod pin;
+pub mod servo;
 pub mod gpioled;
 pub mod pwmled;
 pub mod sysfs_pwm;
@@ -11,46 +12,33 @@ pub mod sysfs_pwm;
 use pin::Gpio;
 use gpioled::*;
 use pwmled::*;
+use servo::*;
 use std::{thread, time};
 
 fn main() {
     // Init logging
     env_logger::init();
 
-    println!("Hello, world!");
+    println!("La cucaracha, la cucaracha,\nYa no puede caminar");
 
-    let pl = PwmLed::new(Gpio::P9_14);
-    //pl.set_frequency(20000);
-    pl.set_frequency(10000000);
+    //let pl = PwmLed::new(Gpio::P9_14);
+    //pl.set_luminosity(1.0);
+    //thread::sleep(time::Duration::from_secs(1));
+    //pl.set_luminosity(0.5436);
+    //thread::sleep(time::Duration::from_secs(1));
+    //pl.set_luminosity(0.0);
+    //pl.fade_to(1.0, /* duration */ 5000 /* ms */, /* update every */ 100 /* ms*/);
+    //pl.fade_to(0.1, /* duration */ 5000 /* ms */, /* update every */ 1000 /* ms*/);
+    //pl.blink(/* proportion */ 0.5, /* nHz  */ 100000000);
 
-    //let l = GpioLed::new(Gpio::P9_12);
-    //let l2 = GpioLed::new(Gpio::P9_18);
-    //let mut i = 0;
-    let mut i = 500000;
-    let mut inc = true;
-    loop {
-        pl.set_duty_cycle(i);
-        thread::sleep(time::Duration::from_nanos(100));
-        if inc {
-        //    i += 1;
-            i += 100;
-//            if i == 20000 {
-            if i == 2500000 {
-                inc = false;
-            }
-        } else {
-//            i -= 1;
-            i -= 100;
-            //if i == 0 {
-            if i == 500000 {
-                inc = true;
-            }
-        }
-        //l.set_state(State::HIGH);
-        //l2.set_state(State::HIGH);
-        //thread::sleep(time::Duration::from_secs(1));
-        //l.set_state(State::LOW);
-        //l2.set_state(State::LOW);
-        //thread::sleep(time::Duration::from_secs(1));
-    }
+    let servo = Servo::new(Gpio::P9_14, 180.0);
+    thread::sleep(time::Duration::from_secs(4));
+    servo.set_position(0.0);
+    thread::sleep(time::Duration::from_secs(4));
+    servo.set_position(50.0);
+    thread::sleep(time::Duration::from_secs(4));
+    servo.set_position(180.0);
+    thread::sleep(time::Duration::from_secs(4));
+    servo.go_to(0.0, /* duration */ 5000 /* ms */, /* update every */ 100 /* ms*/);
+    servo.go_to(75.0, /* duration */ 5000 /* ms */, /* update every */ 100 /* ms*/);
 }

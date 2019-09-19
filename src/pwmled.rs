@@ -13,6 +13,7 @@ impl PwmLed {
 
     pub fn new_with_luminosity(gpio: Gpio, mut luminosity: f32) -> PwmLed {
         let pwm = GpioToPwm(gpio).unwrap();
+        println!("PWM {} {}", pwm.0, pwm.1);
         let pwm = Pwm::new(pwm.0, pwm.1).unwrap(); // number depends on chip, etc.
         match pwm.export() {
             Ok(()) => info!("PWM exported!"),
@@ -25,13 +26,17 @@ impl PwmLed {
         } else if luminosity < 0.0 {
             luminosity = 0.0;
         }
-        let duty = frequency as f32 * (1.0 - luminosity);
-        match pwm.set_duty_cycle_ns(duty as u32) {
-            Err(e) => {println!("{}", e);}
+        match pwm.set_duty_cycle_ns(0) {
+            Err(e) => {println!("Set duty to 0 for - err: {}", e);}
             Ok(_) => {}
         };
         match pwm.set_period_ns(frequency) {
-            Err(e) => {println!("{}", e);}
+            Err(e) => {println!("Set freq to {} - err: {}", frequency, e);}
+            Ok(_) => {}
+        };
+        let duty = frequency as f32 * luminosity;
+        match pwm.set_duty_cycle_ns(duty as u32) {
+            Err(e) => {println!("Set duty to {} - err: {}", duty, e);}
             Ok(_) => {}
         };
         pwm.enable(true).unwrap();
@@ -46,10 +51,9 @@ impl PwmLed {
         } else if luminosity < 0.0 {
             luminosity = 0.0;
         }
-        let duty_cycle = self.pwm.get_period_ns().unwrap_or(0) as f32 * (1.0 - luminosity);
+        let duty_cycle = self.pwm.get_period_ns().unwrap_or(0) as f32 * luminosity;
         let res = match self.pwm.set_duty_cycle_ns(duty_cycle as u32) {
             Err(e) => {
-                println!("{}", e);
                 false
             }
             Ok(_) => {
@@ -73,7 +77,7 @@ impl PwmLed {
         let frequency = self.pwm.get_period_ns().unwrap_or(0) as f32;
 
         let current_cycle: f32 = self.pwm.get_duty_cycle_ns().unwrap_or(0) as f32;
-        let wanted_cycle: f32 = (1.0 - luminosity) * frequency;
+        let wanted_cycle: f32 = luminosity * frequency;
         let inc = (wanted_cycle - current_cycle) / step as f32;
         for _ in 0..step {
             let mut new_cycle = self.pwm.get_duty_cycle_ns().unwrap_or(0) as i32 + inc as i32;
@@ -98,11 +102,12 @@ impl PwmLed {
             proportion = 0.0;
         }
 
-        let duty_cycle = ((1.0 - proportion) * speed as f32) as u32;
+        let duty_cycle = (proportion * speed as f32) as u32;
         self.pwm.enable(false).unwrap();
         let min_freq = std::cmp::min(speed, self.pwm.get_period_ns().unwrap_or(0));
         let change_duty = self.pwm.get_duty_cycle_ns().unwrap_or(0) > min_freq;
         // Avoid OS error
+        // TODO this doesn't seems to work
         if change_duty {
             let res = match self.pwm.set_duty_cycle_ns(min_freq) {
                 Err(e) => {
@@ -141,6 +146,12 @@ impl PwmLed {
         };
         self.pwm.enable(true).unwrap();
         res
+    }
+
+    pub fn get_luminosity(&self) -> f32 {
+        let frequency = self.pwm.get_period_ns().unwrap_or(0) as f32;
+        let duty_cycle = self.pwm.get_duty_cycle_ns().unwrap_or(0) as f32;
+        duty_cycle / frequency
     }
 
 }

@@ -3,27 +3,32 @@ extern crate env_logger;
 extern crate log;
 extern crate sysfs_gpio;
 
+pub mod beaglebone;
 pub mod pin;
 pub mod servo;
 pub mod gpioled;
 pub mod pwmled;
 pub mod rgbled;
-pub mod sysfs_pwm;
 
+use beaglebone::*;
 use pin::Gpio;
 use gpioled::*;
 use pwmled::*;
 use rgbled::*;
 use servo::*;
 use std::{thread, time};
+use std::sync::{Arc, Mutex};
 
 fn main() {
     // Init logging
     env_logger::init();
 
+    let beagle = Arc::new(Mutex::new(BeagleBone::new()));
+
+
     println!("La cucaracha, la cucaracha,\nYa no puede caminar");
 
-    //let pl = PwmLed::new(Gpio::P9_14);
+    //let pl = PwmLed::new(beagle.clone(), Gpio::P9_14);
     //pl.set_luminosity(1.0);
     //thread::sleep(time::Duration::from_secs(1));
     //pl.set_luminosity(0.5436);
@@ -33,7 +38,7 @@ fn main() {
     //pl.fade_to(0.1, /* duration */ 5000 /* ms */, /* update every */ 1000 /* ms*/);
     //pl.blink(/* proportion */ 0.5, /* nHz  */ 100000000);
 
-    //let servo = Servo::new(Gpio::P9_14, 180.0);
+    //let servo = Servo::new(beagle.clone(), Gpio::P9_14, 180.0);
     //thread::sleep(time::Duration::from_secs(4));
     //servo.set_position(0.0);
     //thread::sleep(time::Duration::from_secs(4));
@@ -44,7 +49,8 @@ fn main() {
     //servo.go_to(0.0, /* duration */ 5000 /* ms */, /* update every */ 100 /* ms*/);
     //servo.go_to(75.0, /* duration */ 5000 /* ms */, /* update every */ 100 /* ms*/);
 
-    //let rgbled = RGBLed::new_with_color((Gpio::P9_22, Gpio::P9_16, Gpio::P9_14),
+    //let rgbled = RGBLed::new_with_color(beagle.clone(),
+    //    (Gpio::P9_22, Gpio::P9_16, Gpio::P9_14),
     //    RGBLed::color_code_to_luminosity(255, 0, 0, 255));
     //println!("Red");
     //thread::sleep(time::Duration::from_secs(5));

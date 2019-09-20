@@ -1,3 +1,6 @@
+use std::sync::{Arc, Mutex};
+
+use crate::beaglebone::*;
 use crate::pin::*;
 use crate::pwmled::*;
 
@@ -8,15 +11,17 @@ pub struct RGBLed {
 }
 
 impl RGBLed {
-    pub fn new((r_gpio, g_gpio, b_gpio) : (Gpio, Gpio, Gpio)) -> RGBLed {
-        RGBLed::new_with_color((r_gpio, g_gpio, b_gpio), (1.0, 1.0, 1.0))
+    pub fn new(beagle: Arc<Mutex<BeagleBone>>, (r_gpio, g_gpio, b_gpio) : (Gpio, Gpio, Gpio)) -> RGBLed {
+        RGBLed::new_with_color(beagle, (r_gpio, g_gpio, b_gpio), (1.0, 1.0, 1.0))
     }
 
-    pub fn new_with_color((r_gpio, g_gpio, b_gpio) : (Gpio, Gpio, Gpio), (mut r, mut g, mut b): (f32, f32, f32)) -> RGBLed {
+    pub fn new_with_color(beagle: Arc<Mutex<BeagleBone>>,
+        (r_gpio, g_gpio, b_gpio) : (Gpio, Gpio, Gpio),
+        (mut r, mut g, mut b): (f32, f32, f32)) -> RGBLed {
         RGBLed {
-            r_led: PwmLed::new_with_luminosity(r_gpio, r),
-            g_led: PwmLed::new_with_luminosity(g_gpio, g),
-            b_led: PwmLed::new_with_luminosity(b_gpio, b),
+            r_led: PwmLed::new_with_luminosity(beagle.clone(), r_gpio, r),
+            g_led: PwmLed::new_with_luminosity(beagle.clone(), g_gpio, g),
+            b_led: PwmLed::new_with_luminosity(beagle.clone(), b_gpio, b),
         }
     }
 

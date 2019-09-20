@@ -1,9 +1,12 @@
 
-use crate::sysfs_pwm::Pwm;
+use std::sync::{Arc, Mutex};
+
+use crate::beaglebone::*;
 use crate::pin::*;
 
 pub struct Servo {
-    pub pwm: Pwm,
+    pub gpio: Gpio,
+    pub beagle: Arc<Mutex<BeagleBone>>,
     pub degrees: f32,
     pub period: u32,
     pub min_duty: u32,
@@ -11,18 +14,11 @@ pub struct Servo {
 }
 
 impl Servo {
-    pub fn new(gpio: Gpio, degrees: f32) -> Servo {
-        Servo::new_with_position(gpio, degrees, 0.0)
+    pub fn new(beagle: Arc<Mutex<BeagleBone>>, gpio: Gpio, degrees: f32) -> Servo {
+        Servo::new_with_position(beagle, gpio, degrees, 0.0)
     }
 
-    pub fn new_with_position(gpio: Gpio, degrees: f32, position: f32) -> Servo {
-        let pwm = GpioToPwm(gpio).unwrap();
-        let pwm = Pwm::new(pwm.0, pwm.1).unwrap(); // number depends on chip, etc.
-        match pwm.export() {
-            Ok(()) => info!("PWM exported!"),
-            Err(err) => error!("PWM could not be exported: {}", err),
-        };
-
+    pub fn new_with_position(beagle: Arc<Mutex<BeagleBone>>, gpio: Gpio, degrees: f32, position: f32) -> Servo {
         // TODO, do we want to configure this?
         let frequency = 60; // Hz
         let period: u32 = ((1.0 / frequency as f32) * 1000000000 as f32 /* ns */) as u32;
@@ -35,19 +31,11 @@ impl Servo {
         } else if position < 0.0 {
             position = 0.0;
         }
-        pwm.enable(false).unwrap();
         let duty = min_duty as f32 + (max_duty - min_duty) as f32 * (position / degrees);
-        match pwm.set_duty_cycle_ns(duty as u32) {
-            Err(e) => {println!("{}", e);}
-            Ok(_) => {}
-        };
-        match pwm.set_period_ns(period) {
-            Err(e) => {println!("{}", e);}
-            Ok(_) => {}
-        };
-        pwm.enable(true).unwrap();
+        beagle.clone().lock().unwrap().start_pwm(&gpio, duty as u32, period);
         Servo {
-            pwm,
+            gpio,
+            beagle,
             degrees,
             period,
             min_duty,
@@ -61,17 +49,10 @@ impl Servo {
         } else if position < 0.0 {
             position = 0.0;
         }
+        let beagle = &mut self.beagle.lock().unwrap();
+        let pwm = beagle.exported_pwms.get_mut(&self.gpio).unwrap();
         let duty_cycle = self.min_duty as f32 + ((self.max_duty - self.min_duty) as f32 * (position / self.degrees));
-        let res = match self.pwm.set_duty_cycle_ns(duty_cycle as u32) {
-            Err(e) => {
-                println!("{}", e);
-                false
-            }
-            Ok(_) => {
-                true
-            }
-        };
-        res
+        pwm.set_duty_ns(duty_cycle as u32)
     }
 
 
@@ -86,16 +67,18 @@ impl Servo {
             position = 0.0;
         }
 
-        let current_cycle: f32 = self.pwm.get_duty_cycle_ns().unwrap_or(0) as f32;
+        let beagle = &mut self.beagle.lock().unwrap();
+        let pwm = beagle.exported_pwms.get_mut(&self.gpio).unwrap();
+        let current_cycle: f32 = pwm.get_duty_ns() as f32;
         let wanted_cycle: f32 = self.min_duty as f32 + ((self.max_duty - self.min_duty) as f32 * (position / self.degrees));
         let inc = (wanted_cycle - current_cycle) / step as f32;
         for _ in 0..step {
-            let mut new_cycle = self.pwm.get_duty_cycle_ns().unwrap_or(0) as i32 + inc as i32;
+            let mut new_cycle = pwm.get_duty_ns() as i32 + inc as i32;
             if new_cycle < 0 {
                 new_cycle = 0;
             }
             let new_cycle = new_cycle as u32;
-            if !self.pwm.set_duty_cycle_ns(new_cycle).is_ok() {
+            if !pwm.set_duty_ns(new_cycle) {
                 return false;
             }
             std::thread::sleep(std::time::Duration::from_millis(update_period_ms as u64));

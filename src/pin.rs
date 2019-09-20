@@ -1,4 +1,5 @@
 // TODO get from config pin
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Gpio {
     P9_12=60,
     P9_14=50,
@@ -7,11 +8,38 @@ pub enum Gpio {
     P9_22=2,
 }
 
-pub fn GpioToPwm(gpio: Gpio) -> Option<(u32, u32)> {
+pub struct PwmInfo {
+    pub sysfs: u32,
+    pub index: u32,
+    pub chip: String,
+    pub addr: String,
+    pub key: String,
+}
+
+// Copied from https://github.com/jadonk/bonescript/blob/master/src/bone.js
+pub fn GpioToPwmInfo(gpio: &Gpio) -> Option<PwmInfo> {
     match gpio {
-        Gpio::P9_14 => Some((4, 0)),
-        Gpio::P9_16 => Some((4, 1)),
-        Gpio::P9_22 => Some((1, 0)),
+        Gpio::P9_14 => Some(PwmInfo {
+            sysfs: 4,
+            index: 0,
+            chip: String::from("48302000"),
+            addr: String::from("48302200"),
+            key: String::from("P9_14")
+        }),
+        Gpio::P9_16 => Some(PwmInfo {
+            sysfs: 4,
+            index: 1,
+            chip: String::from("48302000"),
+            addr: String::from("48302200"),
+            key: String::from("P9_16")
+        }),
+        Gpio::P9_22 => Some(PwmInfo {
+            sysfs: 1,
+            index: 0,
+            chip: String::from("48300000"),
+            addr: String::from("48300200"),
+            key: String::from("P9_22")
+        }),
         _ => None,
     }
 }

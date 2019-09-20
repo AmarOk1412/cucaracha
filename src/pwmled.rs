@@ -1,47 +1,29 @@
+use std::sync::{ Arc, Mutex };
 
-use crate::sysfs_pwm::Pwm;
+use crate::beaglebone::*;
 use crate::pin::*;
 
 pub struct PwmLed {
-    pub pwm: Pwm,
+    pub beagle: Arc<Mutex<BeagleBone>>,
+    pub gpio: Gpio
 }
 
 impl PwmLed {
-    pub fn new(gpio: Gpio) -> PwmLed {
-        PwmLed::new_with_luminosity(gpio, 1.0)
+    pub fn new(beagle: Arc<Mutex<BeagleBone>>, gpio: Gpio) -> PwmLed {
+        PwmLed::new_with_luminosity(beagle, gpio, 1.0)
     }
 
-    pub fn new_with_luminosity(gpio: Gpio, mut luminosity: f32) -> PwmLed {
-        let pwm = GpioToPwm(gpio).unwrap();
-        println!("PWM {} {}", pwm.0, pwm.1);
-        let pwm = Pwm::new(pwm.0, pwm.1).unwrap(); // number depends on chip, etc.
-        match pwm.export() {
-            Ok(()) => info!("PWM exported!"),
-            Err(err) => error!("PWM could not be exported: {}", err),
-        };
-        pwm.enable(false).unwrap();
+    pub fn new_with_luminosity(beagle: Arc<Mutex<BeagleBone>>, gpio: Gpio, mut luminosity: f32) -> PwmLed {
         let frequency = 20000;
         if luminosity > 1.0 {
             luminosity = 1.0;
         } else if luminosity < 0.0 {
             luminosity = 0.0;
         }
-        match pwm.set_duty_cycle_ns(0) {
-            Err(e) => {println!("Set duty to 0 for - err: {}", e);}
-            Ok(_) => {}
-        };
-        match pwm.set_period_ns(frequency) {
-            Err(e) => {println!("Set freq to {} - err: {}", frequency, e);}
-            Ok(_) => {}
-        };
-        let duty = frequency as f32 * luminosity;
-        match pwm.set_duty_cycle_ns(duty as u32) {
-            Err(e) => {println!("Set duty to {} - err: {}", duty, e);}
-            Ok(_) => {}
-        };
-        pwm.enable(true).unwrap();
+        beagle.clone().lock().unwrap().start_pwm(&gpio, (luminosity * frequency as f32) as u32, frequency);
         PwmLed {
-            pwm,
+            beagle,
+            gpio
         }
     }
 
@@ -51,16 +33,10 @@ impl PwmLed {
         } else if luminosity < 0.0 {
             luminosity = 0.0;
         }
-        let duty_cycle = self.pwm.get_period_ns().unwrap_or(0) as f32 * luminosity;
-        let res = match self.pwm.set_duty_cycle_ns(duty_cycle as u32) {
-            Err(e) => {
-                false
-            }
-            Ok(_) => {
-                true
-            }
-        };
-        res
+        let beagle = &mut self.beagle.lock().unwrap();
+        let pwm = beagle.exported_pwms.get_mut(&self.gpio).unwrap();
+        let duty_cycle = pwm.get_period_ns() as f32 * luminosity;
+        pwm.set_duty_ns(duty_cycle as u32)
     }
 
 
@@ -74,18 +50,21 @@ impl PwmLed {
         } else if luminosity < 0.0 {
             luminosity = 0.0;
         }
-        let frequency = self.pwm.get_period_ns().unwrap_or(0) as f32;
+        let beagle = &mut self.beagle.lock().unwrap();
+        let pwm = beagle.exported_pwms.get_mut(&self.gpio).unwrap();
 
-        let current_cycle: f32 = self.pwm.get_duty_cycle_ns().unwrap_or(0) as f32;
+        let frequency = pwm.get_period_ns() as f32;
+        let current_cycle: f32 = pwm.get_duty_ns() as f32;
         let wanted_cycle: f32 = luminosity * frequency;
         let inc = (wanted_cycle - current_cycle) / step as f32;
+
         for _ in 0..step {
-            let mut new_cycle = self.pwm.get_duty_cycle_ns().unwrap_or(0) as i32 + inc as i32;
+            let mut new_cycle = pwm.get_duty_ns() as i32 + inc as i32;
             if new_cycle < 0 {
                 new_cycle = 0;
             }
             let new_cycle = new_cycle as u32;
-            if !self.pwm.set_duty_cycle_ns(new_cycle).is_ok() {
+            if !pwm.set_duty_ns(new_cycle) {
                 return false;
             }
             std::thread::sleep(std::time::Duration::from_millis(update_period_ms as u64));
@@ -103,54 +82,19 @@ impl PwmLed {
         }
 
         let duty_cycle = (proportion * speed as f32) as u32;
-        self.pwm.enable(false).unwrap();
-        let min_freq = std::cmp::min(speed, self.pwm.get_period_ns().unwrap_or(0));
-        let change_duty = self.pwm.get_duty_cycle_ns().unwrap_or(0) > min_freq;
-        // Avoid OS error
-        // TODO this doesn't seems to work
-        if change_duty {
-            let res = match self.pwm.set_duty_cycle_ns(min_freq) {
-                Err(e) => {
-                    false
-                }
-                Ok(_) => {
-                    true
-                }
-            };
-            if !res {
-                self.pwm.enable(true).unwrap();
-                return false;
-            }
-        }
-        // Change freq
-        let res = match self.pwm.set_period_ns(speed) {
-            Err(e) => {
-                false
-            }
-            Ok(_) => {
-                true
-            }
-        };
-        if !res {
-            self.pwm.enable(true).unwrap();
+        let beagle = &mut self.beagle.lock().unwrap();
+        let pwm = beagle.exported_pwms.get_mut(&self.gpio).unwrap();
+        if !pwm.set_period_ns(speed) {
             return false;
         }
-        // And fill with blink
-        let res = match self.pwm.set_duty_cycle_ns(duty_cycle) {
-            Err(e) => {
-                false
-            }
-            Ok(_) => {
-                true
-            }
-        };
-        self.pwm.enable(true).unwrap();
-        res
+        pwm.set_duty_ns(duty_cycle)
     }
 
     pub fn get_luminosity(&self) -> f32 {
-        let frequency = self.pwm.get_period_ns().unwrap_or(0) as f32;
-        let duty_cycle = self.pwm.get_duty_cycle_ns().unwrap_or(0) as f32;
+        let beagle = &mut self.beagle.lock().unwrap();
+        let pwm = beagle.exported_pwms.get_mut(&self.gpio).unwrap();
+        let frequency = pwm.get_period_ns() as f32;
+        let duty_cycle = pwm.get_duty_ns() as f32;
         duty_cycle / frequency
     }
 

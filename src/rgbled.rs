@@ -1,6 +1,3 @@
-use std::sync::{Arc, Mutex};
-
-use crate::beaglebone::*;
 use crate::pin::*;
 use crate::pwmled::*;
 
@@ -11,17 +8,16 @@ pub struct RGBLed {
 }
 
 impl RGBLed {
-    pub fn new(beagle: Arc<Mutex<BeagleBone>>, (r_gpio, g_gpio, b_gpio) : (Gpio, Gpio, Gpio)) -> RGBLed {
-        RGBLed::new_with_color(beagle, (r_gpio, g_gpio, b_gpio), (1.0, 1.0, 1.0))
+    pub fn new((r_gpio, g_gpio, b_gpio) : (Gpio, Gpio, Gpio)) -> RGBLed {
+        RGBLed::new_with_color((r_gpio, g_gpio, b_gpio), (1.0, 1.0, 1.0))
     }
 
-    pub fn new_with_color(beagle: Arc<Mutex<BeagleBone>>,
-        (r_gpio, g_gpio, b_gpio) : (Gpio, Gpio, Gpio),
-        (mut r, mut g, mut b): (f32, f32, f32)) -> RGBLed {
+    pub fn new_with_color((r_gpio, g_gpio, b_gpio) : (Gpio, Gpio, Gpio),
+        (r, g, b): (f32, f32, f32)) -> RGBLed {
         RGBLed {
-            r_led: PwmLed::new_with_luminosity(beagle.clone(), r_gpio, r),
-            g_led: PwmLed::new_with_luminosity(beagle.clone(), g_gpio, g),
-            b_led: PwmLed::new_with_luminosity(beagle.clone(), b_gpio, b),
+            r_led: PwmLed::new_with_luminosity(r_gpio, r),
+            g_led: PwmLed::new_with_luminosity(g_gpio, g),
+            b_led: PwmLed::new_with_luminosity(b_gpio, b),
         }
     }
 
@@ -42,7 +38,7 @@ impl RGBLed {
         ((r * a) as f32 / 255.0, (g * a) as f32 / 255.0, (b * a) as f32 / 255.0)
     }
 
-    pub fn set_color(&self, (r, g, b): (f32, f32, f32)) -> bool {
+    pub fn set_color(&mut self, (r, g, b): (f32, f32, f32)) -> bool {
         let res = self.r_led.set_luminosity(r);
         if !res {
             return false;
@@ -56,7 +52,7 @@ impl RGBLed {
     }
 
 
-    pub fn fade_to(&self, (mut r, mut g, mut b): (f32, f32, f32), duration_ms: u32, update_period_ms: u32) -> bool {
+    pub fn fade_to(&mut self, (mut r, mut g, mut b): (f32, f32, f32), duration_ms: u32, update_period_ms: u32) -> bool {
         let mut step = duration_ms / update_period_ms;
         if step == 0 {
             step = 1;
@@ -100,7 +96,7 @@ impl RGBLed {
     }
 
 
-    pub fn blink(&self, proportion: f32, speed: u32) -> bool {
+    pub fn blink(&mut self, proportion: f32, speed: u32) -> bool {
         let res = self.r_led.blink(proportion, speed);
         if !res {
             return false;

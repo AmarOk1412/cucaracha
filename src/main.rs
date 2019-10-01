@@ -1,18 +1,21 @@
 extern crate env_logger;
 #[macro_use]
 extern crate log;
+extern crate serial;
 extern crate sysfs_gpio;
 
 pub mod beaglebone;
-pub mod pin;
-pub mod servo;
 pub mod gpioled;
+pub mod maestro;
+pub mod pin;
 pub mod pwmled;
 pub mod rgbled;
+pub mod servo;
 
 use beaglebone::*;
-use pin::Gpio;
 use gpioled::*;
+use maestro::*;
+use pin::Gpio;
 use pwmled::*;
 use rgbled::*;
 use servo::*;
@@ -23,6 +26,14 @@ fn main() {
     env_logger::init();
 
     println!("La cucaracha, la cucaracha,\nYa no puede caminar");
+
+    let mut maestro = Maestro::new();
+    maestro.set_target(1, 6000);
+    thread::sleep(time::Duration::from_secs(1));
+    maestro.set_target(1, 2000);
+    thread::sleep(time::Duration::from_secs(1));
+    maestro.set_target(1, 10000);
+    // TODO: Servo new with Maestro
 
     //let mut pl = PwmLed::new(Gpio::P9_14);
     //pl.set_luminosity(1.0);
@@ -45,35 +56,37 @@ fn main() {
     //servo.go_to(0.0, /* duration */ 5000 /* ms */, /* update every */ 100 /* ms*/);
     //servo.go_to(75.0, /* duration */ 5000 /* ms */, /* update every */ 100 /* ms*/);
 
-    let mut rgbled = RGBLed::new_with_color(
-        (Gpio::P9_22, Gpio::P9_16, Gpio::P9_14),
-        RGBLed::color_code_to_luminosity(255, 0, 0, 255));
-    println!("Red");
-    thread::sleep(time::Duration::from_secs(5));
-    rgbled.set_color(RGBLed::color_code_to_luminosity(0, 255, 0, 255));
-    println!("Green");
-    thread::sleep(time::Duration::from_secs(5));
-    rgbled.set_color(RGBLed::color_code_to_luminosity(0, 0, 255, 255));
-    println!("Blue");
-    thread::sleep(time::Duration::from_secs(5));
-    rgbled.set_color(RGBLed::color_code_to_luminosity(128, 0, 128, 255));
-    println!("Mid Purple");
-    thread::sleep(time::Duration::from_secs(5));
-    println!("Fade to red");
-    rgbled.fade_to(RGBLed::color_code_to_luminosity(255, 0, 0, 255),
-        /* duration */ 5000 /* ms */, /* update every */ 10 /* ms*/);
-    println!("Fade to green");
-    rgbled.fade_to(RGBLed::color_code_to_luminosity(0, 255, 0, 255),
-        /* duration */ 5000 /* ms */, /* update every */ 10 /* ms*/);
-    println!("Fade to blue");
-    rgbled.fade_to(RGBLed::color_code_to_luminosity(0, 0, 255, 255),
-        /* duration */ 5000 /* ms */, /* update every */ 10 /* ms*/);
-    println!("Fade to white");
-    rgbled.fade_to(RGBLed::color_code_to_luminosity(255, 255, 255, 255),
-        /* duration */ 5000 /* ms */, /* update every */ 10 /* ms*/);
-    println!("Fade to red");
-    rgbled.fade_to(RGBLed::color_code_to_luminosity(255, 0, 0, 255),
-        /* duration */ 5000 /* ms */, /* update every */ 10 /* ms*/);
-    rgbled.blink(/* proportion */ 0.5, /* nHz  */ 100000000);
-    println!("Blink");
+    // NOTE: To control the frequency by pin, we need to take PIN on
+    // different pwmchip. Or we will have some write errors when changing the period.
+    //let mut rgbled = RGBLed::new_with_color(
+    //    (Gpio::P9_22, Gpio::P8_13, Gpio::P9_14),
+    //    RGBLed::color_code_to_luminosity(255, 0, 0, 255));
+    //println!("Red");
+    //thread::sleep(time::Duration::from_secs(5));
+    //rgbled.set_color(RGBLed::color_code_to_luminosity(0, 255, 0, 255));
+    //println!("Green");
+    //thread::sleep(time::Duration::from_secs(5));
+    //rgbled.set_color(RGBLed::color_code_to_luminosity(0, 0, 255, 255));
+    //println!("Blue");
+    //thread::sleep(time::Duration::from_secs(5));
+    //rgbled.set_color(RGBLed::color_code_to_luminosity(128, 0, 128, 255));
+    //println!("Mid Purple");
+    //thread::sleep(time::Duration::from_secs(5));
+    //println!("Fade to red");
+    //rgbled.fade_to(RGBLed::color_code_to_luminosity(255, 0, 0, 255),
+    //    /* duration */ 5000 /* ms */, /* update every */ 10 /* ms*/);
+    //println!("Fade to green");
+    //rgbled.fade_to(RGBLed::color_code_to_luminosity(0, 255, 0, 255),
+    //    /* duration */ 5000 /* ms */, /* update every */ 10 /* ms*/);
+    //println!("Fade to blue");
+    //rgbled.fade_to(RGBLed::color_code_to_luminosity(0, 0, 255, 255),
+    //    /* duration */ 5000 /* ms */, /* update every */ 10 /* ms*/);
+    //println!("Fade to white");
+    //rgbled.fade_to(RGBLed::color_code_to_luminosity(255, 255, 255, 255),
+    //    /* duration */ 5000 /* ms */, /* update every */ 10 /* ms*/);
+    //println!("Fade to red");
+    //rgbled.fade_to(RGBLed::color_code_to_luminosity(255, 0, 0, 255),
+    //    /* duration */ 5000 /* ms */, /* update every */ 10 /* ms*/);
+    //rgbled.blink(/* proportion */ 0.5, /* nHz  */ 100000000);
+    //println!("Blink");
 }

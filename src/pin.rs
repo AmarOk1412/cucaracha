@@ -1,11 +1,13 @@
 // TODO get from config pin
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Gpio {
+    P8_13=23,
     P9_12=60,
     P9_14=50,
     P9_16=51,
     P9_18=4,
     P9_22=2,
+    P9_28=113,
 }
 
 pub struct Pwm {
@@ -39,6 +41,20 @@ pub fn GpioToPwm(gpio: &Gpio) -> Option<Pwm> {
             chip: String::from("48300000"),
             addr: String::from("48300200"),
             key: String::from("P9_22")
+        }),
+        Gpio::P9_28 => Some(Pwm {
+            sysfs: 6,
+            index: 0,
+            chip: String::from("48304000"),
+            addr: String::from("48304100"),
+            key: String::from("P9_28")
+        }),
+        Gpio::P8_13 => Some(Pwm {
+            sysfs: 7,
+            index: 1,
+            chip: String::from("48304000"),
+            addr: String::from("48304200"),
+            key: String::from("P8_13")
         }),
         _ => None,
     }

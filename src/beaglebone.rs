@@ -53,7 +53,7 @@ impl Pwm {
         // Update freq
         info!("Write {} in {}", period_ns, period_ns_path);
         if !fs::write(&period_ns_path, period_ns.to_string()).is_ok() {
-            error!("Can't change period {}: {}", period_ns_path, period_ns);
+            error!("Can't change period {}: {}. Maybe 2 pwm uses the same pwmchip. Please see log in /var/log/syslog.", period_ns_path, period_ns);
             return false;
         }
         if period_ns > self.get_period_ns() {

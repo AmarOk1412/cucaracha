@@ -28,12 +28,29 @@ fn main() {
     println!("La cucaracha, la cucaracha,\nYa no puede caminar");
 
     let mut maestro = Maestro::new();
-    maestro.set_target(1, 6000);
-    thread::sleep(time::Duration::from_secs(1));
-    maestro.set_target(1, 2000);
-    thread::sleep(time::Duration::from_secs(1));
-    maestro.set_target(1, 10000);
+    for c in 0..6 {
+        maestro.set_speed(c, 360);
+        maestro.set_position(c, 90);
+    }
+    while maestro.is_moving() {
+        println!("Position for channel 0: {}", maestro.get_position(0));
+        thread::sleep(time::Duration::from_millis(1));
+    }
+    thread::sleep(time::Duration::from_secs(5));
+    for c in 0..6 {
+        maestro.set_position(c, 0);
+    }
+    while maestro.is_moving() {
+        println!("Position for channel 0: {}", maestro.get_position(0));
+        thread::sleep(time::Duration::from_millis(1));
+    }
+    thread::sleep(time::Duration::from_secs(5));
+    for c in 0..6 {
+        maestro.set_position(c, 180);
+    }
     // TODO: Servo new with Maestro
+    // TODO: 2 legs
+    // TODO test on the BBB
 
     //let mut pl = PwmLed::new(Gpio::P9_14);
     //pl.set_luminosity(1.0);

@@ -11,7 +11,6 @@ pub struct MaestroSettings {
     pub device: u8,
     pub min_target: u16,
     pub max_target: u16,
-    pub servo_range: u16,
 }
 
 /**
@@ -21,9 +20,8 @@ pub struct MaestroSettings {
 pub struct Maestro {
     port: Box<dyn SerialPort>,
     device: u8,
-    min_target: u16,
-    max_target: u16,
-    servo_range: u16,
+    pub min_target: u16,
+    pub max_target: u16,
 }
 
 impl Maestro {
@@ -33,7 +31,6 @@ impl Maestro {
      * device: 0x0c
      * min_target: 2000
      * max_target: 10000
-     * servo_range: 180
      * @return the new Maestro's instance
      */
     pub fn new() -> Maestro {
@@ -42,7 +39,6 @@ impl Maestro {
             device: 0x0c,
             min_target: 2000,
             max_target: 10000,
-            servo_range: 180,
         })
     }
 
@@ -67,7 +63,6 @@ impl Maestro {
             device: settings.device,
             min_target: settings.min_target,
             max_target: settings.max_target,
-            servo_range: settings.servo_range,
         }
     }
 
@@ -103,23 +98,6 @@ impl Maestro {
         self.send(&mut data)
     }
 
-
-    /**
-     * Change a channel position
-     * @param channel      channel to configure
-     * @param position     wanted position in servo_range
-     * @return if the operation was successful
-     */
-    pub fn set_position(&mut self, channel: u8, position: u16) -> bool {
-        let mut position = position;
-        if position > self.servo_range {
-            position = self.servo_range;
-        }
-        let pos_to_target = position as f32 / self.servo_range as f32;
-        let target = self.min_target + ((self.max_target - self.min_target) as f32 * pos_to_target) as u16;
-        self.set_target(channel, target)
-    }
-
     /**
      * Change a channel speed
      * @param channel      channel to configure
@@ -152,15 +130,14 @@ impl Maestro {
      * @return the position read on the socket
      * @note a difference will exists between real value and what the Maestro send
      */
-    pub fn get_position(&mut self, channel: u8) -> u16 {
+    pub fn get_target(&mut self, channel: u8) -> u16 {
         let mut data = vec![0x10, channel];
         self.send(&mut data);
         let mut buf = vec![0; 2];
         self.port.read(&mut buf[..]).ok().expect("Couldn't read on serial socket");
-        let pos = ((buf[1] as u16 & 0x00ff) << 8) + buf[0] as u16;
-        let mut pos = pos as f32 / self.max_target as f32;
-        pos = pos * self.servo_range as f32;
-        return pos as u16;
+        let res = ((buf[1] as u16 & 0x00ff) << 8) + buf[0] as u16;
+        println!("... {}", res);
+        return res;
     }
 
     /**

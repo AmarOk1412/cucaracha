@@ -16,7 +16,7 @@ impl PwmLed {
         } else if luminosity < 0.0 {
             luminosity = 0.0;
         }
-        let pwm = GpioToPwm(&gpio);
+        let pwm = gpio_to_pwm(&gpio);
         if pwm.is_none() {
             panic!("Invalid PWM");
         }

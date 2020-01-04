@@ -20,6 +20,7 @@ use pwmled::*;
 use rgbled::*;
 use servo::*;
 use std::{thread, time};
+use std::sync::{Arc, Mutex};
 
 fn main() {
     // Init logging
@@ -27,31 +28,38 @@ fn main() {
 
     println!("La cucaracha, la cucaracha,\nYa no puede caminar");
 
-    let mut maestro = Maestro::new();
+    let maestro = Arc::new(Mutex::new(Maestro::new()));
+    let mut servos = Vec::new();
     for c in 0..6 {
-        maestro.set_speed(c, 360);
-        maestro.set_position(c, 90);
+        servos.push(Servo::new_from_maestro(180.0, c, maestro.clone()));
+        servos[c as usize].set_position(90.0);
     }
-    while maestro.is_moving() {
-        println!("Position for channel 0: {}", maestro.get_position(0));
+    //println!("Position for channel 0: {}", servos[0 as usize].get_position());
+    while maestro.lock().unwrap().is_moving() {
         thread::sleep(time::Duration::from_millis(1));
     }
+    //println!("Position for channel 0: {}", servos[0 as usize].get_position());
     thread::sleep(time::Duration::from_secs(5));
-    for c in 0..6 {
-        maestro.set_position(c, 0);
-    }
-    while maestro.is_moving() {
-        println!("Position for channel 0: {}", maestro.get_position(0));
-        thread::sleep(time::Duration::from_millis(1));
-    }
-    thread::sleep(time::Duration::from_secs(5));
-    for c in 0..6 {
-        maestro.set_position(c, 180);
-    }
-    // TODO: Servo new with Maestro
-    // TODO: 2 legs
-    // TODO test on the BBB
+    //for c in 0..6 {
+    //    servos[c as usize].set_position(0.0);
+    //}
+    //println!("Position for channel 0: {}", servos[0 as usize].get_position());
+    //while maestro.lock().unwrap().is_moving() {
+    //    thread::sleep(time::Duration::from_millis(1));
+    //}
+    //println!("Position for channel 0: {}", servos[0 as usize].get_position());
+    //thread::sleep(time::Duration::from_secs(5));
+    //for c in 0..6 {
+    //    servos[c as usize].set_position(180.0);
+    //}
+    //println!("Position for channel 0: {}", servos[0 as usize].get_position());
+    //thread::sleep(time::Duration::from_secs(5));
+    //for c in 0..3 {
+    //    servos[c as usize].set_position(60.0);
+    //}
+    servos[4].go_to(0.0, /* duration */ 5000 /* ms */, /* update every */ 100 /* ms*/);
 
+    // TODO: 2 legs
     //let mut pl = PwmLed::new(Gpio::P9_14);
     //pl.set_luminosity(1.0);
     //thread::sleep(time::Duration::from_secs(1));

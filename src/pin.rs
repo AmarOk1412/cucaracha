@@ -19,7 +19,7 @@ pub struct Pwm {
 }
 
 // Copied from https://github.com/jadonk/bonescript/blob/master/src/bone.js
-pub fn GpioToPwm(gpio: &Gpio) -> Option<Pwm> {
+pub fn gpio_to_pwm(gpio: &Gpio) -> Option<Pwm> {
     match gpio {
         Gpio::P9_14 => Some(Pwm {
             sysfs: 4,
